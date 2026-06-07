@@ -66,13 +66,13 @@ pip install -r requirements.txt
 Run training with:
 
 ```bash
-python train.py
+python3 train.py
 ```
 
 Example:
 
 ```bash
-python train.py \
+python3 train.py \
     --d_model 128 \
     --n_layer 4 \
     --d_state 16 \
