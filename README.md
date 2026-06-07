@@ -14,38 +14,37 @@ This repository contains:
 
 ```text
 .
-├── README.md
-├── checkpoints
-├── configs
-│   └── config.py
-├── data
-│   └── wikitext-2
-│       ├── README.md
-│       ├── test.txt
-│       ├── train.txt
-│       └── valid.txt
-├── datasets.py
-├── exp.py
-├── experiments.csv
-├── experiments.ipynb
-├── logs
-├── model
-│   ├── blleloch_scan_concept.py
-│   ├── block_skeleton.py
-│   ├── ffn_mlp.py
-│   ├── language_model.py
-│   ├── mamba_layer.py
-│   ├── mamba_model.py
-│   └── parallel_scan.py
-├── requirements.txt
-├── saved_models
-├── test.py
-├── train.py
-└── utils
-    ├── checkpoints.py
-    ├── test_utils.py
-    └── train_utils.py
-
+├── README.md                    # Project documentation
+├── checkpoints/                 # Saved training checkpoints
+├── configs/
+│   └── config.py                # Training and model configuration
+├── data/
+│   └── wikitext-2/              # WikiText-2 dataset
+│       ├── README.md
+│       ├── train.txt
+│       ├── valid.txt
+│       └── test.txt
+├── datasets.py                  # Dataset loading utilities
+├── exp.py                       # Experiment runner
+├── experiments.csv              # Hyperparameter configurations
+├── experiments.ipynb            # Result analysis and visualization
+├── logs/                        # Training logs
+├── model/
+│   ├── blleloch_scan_concept.py # Blelloch scan demonstration
+│   ├── block_skeleton.py        # Base model block structure
+│   ├── ffn_mlp.py               # Feed-forward network module
+│   ├── language_model.py        # Language modelling wrapper
+│   ├── mamba_layer.py           # Single Mamba layer
+│   ├── mamba_model.py           # Full Mamba architecture
+│   └── parallel_scan.py         # Parallel scan implementation
+├── requirements.txt            # Python dependencies
+├── saved_models/               # Final trained models
+├── test.py                     # Testing script
+├── train.py                    # Training entry point
+└── utils/
+    ├── checkpoints.py          # Checkpoint utilities
+    ├── test_utils.py           # Evaluation helpers
+    └── train_utils.py          # Training utilities
 ```
 ## Installation
 
