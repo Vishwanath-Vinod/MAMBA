@@ -121,15 +121,3 @@ Results and analyses can be found in:
 ```text
 experiments.ipynb
 ```
-
-## Notes
-
-Large checkpoint files are excluded from version control through `.gitignore`.
-
-Recommended directories to exclude:
-
-```text
-checkpoints/
-saved_models/
-logs/
-```
