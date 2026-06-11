@@ -51,7 +51,7 @@ This repository contains:
 Clone the repository:
 
 ```bash
-git clone https://github.com/<username>/MAMBA.git
+git clone https://github.com/Vishwanath-Vinod/MAMBA.git
 cd MAMBA
 ```
 Install dependencies:
