@@ -18,12 +18,10 @@ class MambaConfig:
     dt_scale: float = 1.0
     dt_init_floor: float = 1e-4
     dropout: float = 0.1
-
-    pscan: bool = True # use parallel scan mode or sequential mode when training
+    norm_type: str = "RMS"
 
     def __post_init__(self):
         self.d_inner = self.expand_factor * self.d_model # E*D = ED in comments
-
         if self.dt_rank == 'auto':
             self.dt_rank = math.ceil(self.d_model / 16)
 

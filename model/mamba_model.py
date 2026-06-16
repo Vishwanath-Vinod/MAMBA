@@ -3,29 +3,35 @@ import math
 import copy
 from torch import nn, Tensor
 from model.mamba_layer import Mamba
+from configs.config import MambaConfig
 from model.ffn_mlp import MLP
-from model.block_skeleton import Block_Skeleton
+from model.block_skeleton import Block_Skeleton, RMSNorm
 
 class Model(nn.Module):
     """
     A minimal Mamba language-model backbone composed of an embedding layer,a stack of pre-norm Mamba blocks, and a final LayerNorm.
 
     Each block follows the standard Transformer-style pre-norm residual architecture:
-    x -> LayerNorm -> Mamba -> Add  and x -> LayerNorm -> MLP   -> Add  (optional)
+    x -> Norm -> Mamba -> Add  and x -> Norm -> MLP   -> Add  (optional)
     """
-    def __init__(self,d_model: int,n_layer: int,mlp_intermediate: int,vocab_size: int,
-                 dropout : float = 0.1,ssm_cfg=None,norm_epsilon: float = 1e-5,device=None,dtype=None,):
-        self.factory_kwargs = {"device": device, "dtype": dtype}
+    def __init__(self,config: MambaConfig,norm_epsilon: float = 1e-5,device=None,dtype=None,):
         super().__init__()
-        self.d_model = d_model
-        self.config = ssm_cfg
-        self.n_layer = n_layer
-        self.mlp_intermediate = mlp_intermediate
-        self.dropout = dropout
+        self.factory_kwargs = {"device": device, "dtype": dtype}
+        self.config = config
+        self.d_model = config.d_model
+        self.n_layer = config.n_layer
+        self.mlp_intermediate = config.mlp_intermediate
+        self.dropout = config.dropout
+        self.norm_type = config.norm_type
+        self.vocab_size = config.vocab_size
+        
+        self.embedding = nn.Embedding(self.vocab_size, self.d_model, **self.factory_kwargs)
+        self.layers = nn.ModuleList([self.create_block(i) for i in range(self.n_layer)])
 
-        self.embedding = nn.Embedding(vocab_size, d_model, **self.factory_kwargs)
-        self.layers = nn.ModuleList([self.create_block(i) for i in range(n_layer)])
-        self.final_norm = nn.LayerNorm(d_model, eps=norm_epsilon, **self.factory_kwargs)
+        if self.norm_type=="Layer":
+            self.final_norm = nn.LayerNorm(self.d_model, eps=norm_epsilon, **self.factory_kwargs)
+        else:
+            self.final_norm = RMSNorm(self.d_model, eps=norm_epsilon, **self.factory_kwargs)
 
         # Equivalent to "for module in self.modules(): self._init_weights(module)." But works recursively.
         self.apply(self._init_weights)
@@ -48,14 +54,20 @@ class Model(nn.Module):
         """
         config = copy.deepcopy(self.config or {})  # Create a copy of the config to modify
         mamba = Mamba(**config.mamba_kwargs,**self.factory_kwargs,layer_idx=layer_idx,)
-        norm = nn.LayerNorm(self.d_model,**self.factory_kwargs)
+        if self.norm_type=="Layer":
+            norm = nn.LayerNorm(self.d_model,**self.factory_kwargs)
+        else:
+            norm = RMSNorm(self.d_model,**self.factory_kwargs)
 
         if self.mlp_intermediate == 0:
             mlp = None
             norm2 = None
         else:
             mlp = MLP(in_features=self.d_model,hidden_features=self.mlp_intermediate,out_features=self.d_model,**self.factory_kwargs,)
-            norm2 = nn.LayerNorm(self.d_model,**self.factory_kwargs,)
+            if self.norm_type=="Layer":
+                norm2= nn.LayerNorm(self.d_model,**self.factory_kwargs)
+            else:
+                norm2 = RMSNorm(self.d_model,**self.factory_kwargs)
             
         block = Block_Skeleton(model= mamba,norm1=norm,mlp=mlp,norm2=norm2,dropout=self.dropout)
         block.layer_idx = layer_idx

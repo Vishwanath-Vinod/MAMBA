@@ -3,7 +3,16 @@ import textwrap
 import torch
 
 @torch.no_grad()
-def evaluate_model(model, data, batch_size, topk=(1, 3, 5, 10)):
+def evaluate_model(model, data, batch_size, topk=(1, 3, 5, 10),implementation='my'):
+    """
+    Evaluate the model on a dataset and compute: Average cross-entropy loss, Perplexity (PPL), Top-k accuracies
+    Args: 
+        model: Trained language model.
+        data: Dataset object containing tokenized samples.
+        batch_size: Evaluation batch size.
+        topk: Tuple of k values for top-k accuracy computation.
+    Returns: Dictionary containing: loss, ppl, accuracy_top1, accuracy_top3, accuracy_top5, accuracy_top10
+    """
     criterion = torch.nn.CrossEntropyLoss()
     model.eval()
     device = next(model.parameters()).device
@@ -14,7 +23,11 @@ def evaluate_model(model, data, batch_size, topk=(1, 3, 5, 10)):
     for i, (x,y) in enumerate(loader):
         x = x.to(device)
         y = y.to(device)
-        logits = model(x)
+        if implementation=='my': #: My implementation
+            logits = model(x)
+        else:                   #: OFFICIAL
+            output = model(x) 
+            logits = output.logits
         loss += criterion(logits.reshape(-1, logits.size(-1)),y.reshape(-1)).item()
         # compute accuracies
         targets = y.reshape(-1)
@@ -30,6 +43,14 @@ def evaluate_model(model, data, batch_size, topk=(1, 3, 5, 10)):
     return dict(loss=loss, ppl=math.exp(loss), **accuracies)
 
 def _get_topk_correct(y, scores, topk):
+    """
+    Compute the number of correct predictions for each k in top-k.
+    Args:
+        y: Ground-truth labels of shape (N,).
+        scores: Model logits/probabilities of shape (N, num_classes).
+        topk: Tuple of k values.
+    Returns: Tensor containing the number of correct predictions for each requested top-k value.
+    """
     # y: (B,), yhat: (B, n_classes)
     y_pred = scores.topk(k=max(topk), dim=1)[1].t()  # (B, K_max) -> (K_max, B)
     y1 = y.view(1, -1).expand_as(y_pred)  # (K_max, B); each column is identical
@@ -37,6 +58,9 @@ def _get_topk_correct(y, scores, topk):
     return torch.LongTensor([correct[:k].sum().item() for k in topk])
 
 def sample_from_model(model, train_data):
+    """
+     Generate a sequence of words from the trained language model.
+    """
     words = []
     model.eval()
     device = next(model.parameters()).device

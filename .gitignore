@@ -3,7 +3,7 @@ __pycache__/
 
 checkpoints/
 saved_models/
-logs/
+experiments/
 
 *.pt
 *.pth

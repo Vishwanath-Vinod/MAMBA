@@ -5,8 +5,12 @@ import torch.nn.functional as F
 from einops import rearrange
 from model.parallel_scan import pscan
 
+# ================================================================
+# HELPER FUNCTIONS FOR MAMBA LAYER
+# ================================================================
+
 def inverse_softplus(x):
-    """Numerically stable algebraic equivalent: log(e^x-1)=log(e^x(1-e^(-x)))=x+log(1-e^-x)"""
+    """Numerically stable algebraic equivalent: log(e^x-1)=log(e^x(1-e^(-x)))=x+log(1-e^-x) = x+ log(-(e^-x -1))"""
     return x + torch.log(-torch.expm1(-x))
 
 def initialize_dt_projection(dt_rank,d_inner,dt_min=1e-3,dt_max=1e-1,dt_scale=1.0,dt_init_floor=1e-4,device=None,dtype=None,):
@@ -65,9 +69,13 @@ def selective_scan(x,dt,A,B,C,D=None,z=None,return_last_state=False,parallel=Tru
 
     return (y, last_state) if return_last_state else y
 
+# ================================================================
+# Implements a simple,clean MAMBA Layer with selective scan implementation while remaining faithful to official implementation.
+# ================================================================
+
 class Mamba(nn.Module):
     def __init__(self,device=None,dtype=None,d_conv =4,d_model = 768, expand =2, d_state = 16,dt_rank = "auto",
-                 dt_min=0.001,dt_max=0.1,dt_scale=1.0,dt_init_floor=1e-4,layer_idx = None):
+                 dt_min=0.001,dt_max=0.1,dt_scale=1.0,dt_init_floor=1e-4,layer_idx = None, parallel = True):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
 
@@ -79,20 +87,21 @@ class Mamba(nn.Module):
         self.d_inner = int(expand * d_model) # Expanded hidden dimension used inside Mamba
         self.dt_rank = math.ceil(d_model / 16) if dt_rank == "auto" else dt_rank # Low-rank dimension used for Δt parameterization
         self.layer_idx = layer_idx  # Index of the Mamba layer within the entire model
+        self.parallel = parallel   # True for parallelized selective scan.
 
         #Input Projection: Expand and then split into 2 paths: Gating & S6
         self.in_proj = nn.Linear(self.d_model, self.d_inner * 2, bias=False, **factory_kwargs)
 
-        # Depthwise Convolution in S6 pathway: one filter for each channel with size d_conv
+        # Depthwise Convolution in S6 pathway: one filter for each channel (total: d_inner channels) with size d_conv
         self.conv1d = nn.Conv1d(in_channels=self.d_inner,out_channels=self.d_inner,bias=True,kernel_size=d_conv,groups=self.d_inner,padding=d_conv - 1,**factory_kwargs)
         
-        #Extracting parameters: B (self.d_state),C (self.d_state) and Δt (self.dt_rank): different for each token
+        #Extracting S6 parameters: B (self.d_state),C (self.d_state) and Δt (self.dt_rank): different for each token
         self.x_proj = nn.Linear(self.d_inner, self.dt_rank + self.d_state * 2, bias=False, **factory_kwargs)
         
-        #Δt is diff for each channel for this project low size dt computed to full d_inner size using this dt_proj layer
+        #Δt is diff for each channel for this. Project low size dt computed to full d_inner size using this dt_proj layer
         self.dt_proj = initialize_dt_projection(dt_rank=self.dt_rank,d_inner=self.d_inner,dt_min=dt_min,dt_max=dt_max,dt_scale=dt_scale,dt_init_floor=dt_init_floor,**factory_kwargs)
         
-        #Output Projection
+        #Output Projection: bring back to input size.
         self.out_proj = nn.Linear(self.d_inner, self.d_model, bias=False, **factory_kwargs)
         
         #S4D real initialization for A and D parameters: keep in fp32
@@ -135,6 +144,7 @@ class Mamba(nn.Module):
     def ssm_params(self, x, seqlen=None):
         """
         SSM Parameters: B,C and dt are token dependent.
+        Returns
             dt     : (B, d_inner, L)
             B      : (B, d_state, L)
             C      : (B, d_state, L)
@@ -172,17 +182,9 @@ class Mamba(nn.Module):
 
         # SSM parameters
         dt, B, C = self.ssm_params(rearrange(x, "b d l -> (b l) d"), seqlen)
-        dt_mean = dt.mean().item()
-        dt_std  = dt.std().item()
-        dt_min  = dt.min().item()
-        dt_max  = dt.max().item()
-        """
-        if (dt_min < 1e-6 or dt_max > 1.0 or dt_mean < 5e-4 or dt_mean > 0.5 
-            or torch.isnan(dt).any() or torch.isinf(dt).any()):
-            print(f"[WARNING] dt statistics:"f" mean={dt_mean:.4e}"f" std={dt_std:.4e}"f" min={dt_min:.4e}"f" max={dt_max:.4e}")
-        """
+
         # Selective scan
-        y = selective_scan(x,dt,self.A,B,C,self.D.float(),z=z,return_last_state=(ssm_state is not None), parallel=True)
+        y = selective_scan(x,dt,self.A,B,C,self.D.float(),z=z,return_last_state=(ssm_state is not None), parallel=self.parallel)
 
         # Update SSM cache (prefill only)
         if ssm_state is not None:

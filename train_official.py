@@ -6,12 +6,16 @@ import time
 import torch
 from tqdm.auto import tqdm
 
-from datasets import WikiText2, DatasetSplit
-from model.language_model import MambaLM
-from configs.config import MambaConfig
-from utils.train_utils import *
-from utils.test_utils import *
-from utils.checkpoints import *
+from MAMBA_barebones.datasets import WikiText2, DatasetSplit
+from MAMBA_barebones.utils.train_utils import *
+from MAMBA_barebones.utils.test_utils import *
+from MAMBA_barebones.utils.checkpoints import *
+import sys
+from pathlib import Path
+repo_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(repo_root))
+from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+from mamba_ssm.models.config_mamba import MambaConfig
 
 def train_model(model, train_data, valid_data, args):
     parts = os.path.splitext(args.savefilename)
@@ -42,7 +46,7 @@ def train_model(model, train_data, valid_data, args):
     def _log_valid():
         nonlocal logs_test, best_val_loss
         t0 = time.time()
-        val_metrics = evaluate_model(model, valid_data, args.batch_size)
+        val_metrics = evaluate_model(model, valid_data, args.batch_size,implementation='official')
         print('-' * 100)
         print('| checkpoint | epoch {:3d} | time: {:5.2f}s | validation loss {:5.2f} | '
                 'validation perplexity {:8.2f}'.format(epoch, (time.time() - t0), val_metrics['loss'], val_metrics['ppl']))
@@ -79,7 +83,8 @@ def train_model(model, train_data, valid_data, args):
             x = x.to(device)
             y = y.to(device)    
             optimizer.zero_grad()
-            logits = model(x)
+            output = model(x)
+            logits = output.logits
             loss = criterion(logits.reshape(-1, logits.size(-1)),y.reshape(-1))
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
@@ -111,9 +116,9 @@ if __name__ == '__main__':
     test_data = WikiText2(**dataset_args, split=DatasetSplit.test, max_vocab_size=args.max_vocab_size)
 
     # Setup model and updating Vocabulary size based on training data.
-    config = MambaConfig(d_model=args.d_model,n_layer=args.n_layer,d_state=args.d_state,dropout=args.dropout,)
+    config = MambaConfig(d_model=args.d_model,n_layer=args.n_layer)
     config.vocab_size = len(train_data.word2idx)
-    model = MambaLM(config,device=device,)
+    model = MambaLMHeadModel(config,device=device,)
     print("Model device:", next(model.parameters()).device)
     count = count_parameters(model)
     print('Initialized model with {} parameters'.format(count))
@@ -128,7 +133,7 @@ if __name__ == '__main__':
     savefilename_best = f'{parts[0]}__best{parts[1]}'
     model = load_model_weights(model,path=savefilename_best,device=device,)
 
-    test_metrics = evaluate_model(model, test_data, args.batch_size)
+    test_metrics = evaluate_model(model, test_data, args.batch_size,implementation='official')
     print('=' * 89)
     print('| end of training | test loss {:5.2f} | test perplexity {:8.2f}'.format(test_metrics['loss'], test_metrics['ppl']))
     print(test_metrics)

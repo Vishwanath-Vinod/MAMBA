@@ -29,3 +29,13 @@ class Block_Skeleton(nn.Module):
             x = x + residual 
         return x
     
+class RMSNorm(nn.Module):
+    def __init__(self, dim, eps=1e-5, device=None, dtype=None):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim, device=device, dtype=dtype))
+
+    def forward(self, x):
+        rms = torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
+        return x * rms * self.weight
+    

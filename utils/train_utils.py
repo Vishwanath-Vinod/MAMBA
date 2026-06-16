@@ -17,30 +17,31 @@ def make_train_parser():
     """
     parser = argparse.ArgumentParser(description="Train MambaLM on WikiText-2")
 
-    parser.add_argument("--d_model", type=int, default=128)
-    parser.add_argument("--n_layer", type=int, default=4)
+    parser.add_argument("--d_model", type=int, default=64)
+    parser.add_argument("--n_layer", type=int, default=2)
     parser.add_argument("--d_state", type=int, default=16)
-    parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument("--dropout", type=float, default=0.2)
 
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_epochs", type=int, default=50)
     parser.add_argument("--optimizer",type=str,default="adamw",choices=["sgd", "adam", "adamw"],)
 
     parser.add_argument("--lr", type=float, default=3e-4)
-    parser.add_argument("--scheduler",type=str,default="step",choices=["constant", "step", "cosine"],)
+    parser.add_argument("--scheduler",type=str,default="cosine",choices=["constant", "step", "cosine"],)
+    parser.add_argument("--patience",type=int,default=5,help="Early stopping patience")
     # StepLR parameters
     parser.add_argument("--step_size", type=int, default=10)
     parser.add_argument("--gamma", type=float, default=0.5)
     # Cosine parameters
     parser.add_argument("--min_lr", type=float, default=1e-6)
 
-    parser.add_argument("--weight_decay", type=float, default=1e-2)
+    parser.add_argument("--weight_decay", type=float, default=0.01)
     parser.add_argument("--max_grad_norm", type=float, default=1.0)
 
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument('--savefilename', type=str, default='./saved_models/model1.pt')
-    parser.add_argument('--logfilename', type=str, default='./logs/out1')
+    parser.add_argument('--savefilename', type=str, default='./saved_models/model2.pt')
+    parser.add_argument('--logfilename', type=str, default='official_logs/2/')
 
     parser.add_argument('--data_dir', type=str, default='./data/wikitext-2',help="Path to WikiText-2 directory")
     parser.add_argument('--context_size', type=int, default=150)
@@ -80,9 +81,15 @@ def setup_optimizer_from_args(args, model):
     return optimizer
 
 def count_parameters(model):
+    """
+    Total number of parameters in model.
+    """
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def format_time(seconds):
+    """
+    Print time format as hh:mm:ss.
+    """
     hours, rem = divmod(int(seconds), 3600)
     minutes, seconds = divmod(rem, 60)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
