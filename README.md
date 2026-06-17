@@ -1,6 +1,6 @@
 # MAMBA Barebones
 
-A lightweight PyTorch implementation of the Mamba State Space Model (SSM) architecture, including both sequential and parallel scan implementations for efficient sequence modeling.
+A lightweight PyTorch implementation of the Mamba State Space Model (SSM) architecture, including both sequential and parallel scan implementations for efficient sequence modelling.
 
 ## Overview
 
@@ -26,7 +26,6 @@ This repository contains:
 │       └── test.txt
 ├── datasets.py                  # Dataset loading utilities
 ├── exp.py                       # Experiment runner
-├── experiments.csv              # Hyperparameter configurations
 ├── experiments.ipynb            # Result analysis and visualization
 ├── logs/                        # Training logs
 ├── model/
@@ -41,10 +40,15 @@ This repository contains:
 ├── saved_models/               # Final trained models
 ├── test.py                     # Testing script
 ├── train.py                    # Training entry point
+├── test_official.py            # Testing performance of official MAMBA implementation.
+├── train_official.py           # Training official MAMBA model.
+├── test_generation.py          # Tests autoregressive generation.
 └── utils/
     ├── checkpoints.py          # Checkpoint utilities
     ├── test_utils.py           # Evaluation helpers
     └── train_utils.py          # Training utilities
+    ├── sampling_utils.py       # Helper functions for facilitating sampling (generation).
+    └── generation_utils.py     # Helper functions for Autoregressive Generation.
 ```
 ## Installation
 
@@ -79,27 +83,15 @@ python3 train.py \
     --weight_decay 0.01
 ```
 
-## Hyperparameter Experiments
+## Experiments
 
-Experiments can be launched using the experiment scripts provided in the repository.
-
-Experiment configurations are recorded in:
+A detailed ablation study for multiple hyperparameter configurations with multiple architectural implementations are present in:
 
 ```text
-experiments.csv
+experiments.ipynb
 ```
+It also contains a comparison with the official MAMBA implementation as a sanity check.
 
-Training logs are stored in:
-
-```text
-logs/
-```
-
-Model checkpoints are stored in:
-
-```text
-checkpoints/
-```
 
 ## Parallel Scan Verification
 
@@ -113,11 +105,3 @@ Verification checks:
 * Forward pass equivalence
 * Gradient equivalence with respect to transition parameters
 * Gradient equivalence with respect to inputs
-
-## Results
-
-Results and analyses can be found in:
-
-```text
-experiments.ipynb
-```
