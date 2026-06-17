@@ -17,8 +17,8 @@ def make_train_parser():
     """
     parser = argparse.ArgumentParser(description="Train MambaLM on WikiText-2")
 
-    parser.add_argument("--d_model", type=int, default=64)
-    parser.add_argument("--n_layer", type=int, default=2)
+    parser.add_argument("--d_model", type=int, default=256)
+    parser.add_argument("--n_layer", type=int, default=6)
     parser.add_argument("--d_state", type=int, default=16)
     parser.add_argument("--dropout", type=float, default=0.2)
 
@@ -40,8 +40,8 @@ def make_train_parser():
 
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument('--savefilename', type=str, default='./saved_models/model2.pt')
-    parser.add_argument('--logfilename', type=str, default='official_logs/2/')
+    parser.add_argument('--savefilename', type=str, default='checkpoints/trial/model.pt')
+    parser.add_argument('--logfilename', type=str, default='checkpoints/trial/logs/')
 
     parser.add_argument('--data_dir', type=str, default='./data/wikitext-2',help="Path to WikiText-2 directory")
     parser.add_argument('--context_size', type=int, default=150)

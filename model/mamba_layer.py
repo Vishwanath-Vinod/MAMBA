@@ -231,15 +231,9 @@ class Mamba(nn.Module):
     
     def _get_states_from_cache(self,inference_params,batch_size,initialize_states=False,dtype=None):
         """
-        Retrieve cached inference states for this layer. If no states exist yet, they are allocated and stored. Optionally resets existing states to zero.
+        Retrieve cached inference states for this layer. Optionally resets existing states to zero.
         """
-        assert self.layer_idx is not None
-
         cache = inference_params.key_value_memory_dict
-        if self.layer_idx not in cache:
-            conv_state, ssm_state = self.allocate_inference_cache(batch_size,dtype)
-            cache[self.layer_idx] = conv_state, ssm_state
-
         conv_state, ssm_state = cache[self.layer_idx]
 
         if initialize_states:

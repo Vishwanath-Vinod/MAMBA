@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 from configs.config import MambaConfig
 from model.mamba_model import Model
+from utils.generation_utils import Generation_Wrapper
 import copy
 
-class MambaLM(nn.Module):
+class MambaLM(nn.Module, Generation_Wrapper):
     """
     The simple Language Model obtained by using the MAMBA model defined in create_model.
     """
